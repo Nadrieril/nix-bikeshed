@@ -213,7 +213,13 @@ quote x =
 
 -- *I functions return the string that fits the constraints
 exprI :: NExpr -> NixMonad ()
-exprI (Fix expr) = formatI $ parenthesizeI expr
+exprI = formatI .
+        parenthesizeI .
+        fmap (fmap exprI) .
+        unroll
+
+unroll :: NExpr -> NExprF (Prio, NExpr)
+unroll = fmap (\(Fix e) -> (exprPrio e, Fix e)) . unFix
 
 -- *L functions return the length the expression would take if put all on one
 -- line
@@ -290,10 +296,10 @@ associates l r = case (binOpOf l, binOpOf r) of
     -- //
     ("//", "//") -> True
 
-parenIf :: (Prio -> Bool) -> NExpr -> NixMonad ()
-parenIf pred e = if pred $ exprPrio $ unFix e
-    then writeText "(" >> exprI e >> writeText ")"
-    else exprI e
+parenIf :: (Prio -> Bool) -> (Prio, NixMonad ()) -> NixMonad ()
+parenIf pred (prio, m) = if pred prio
+    then writeText "(" >> m >> writeText ")"
+    else m
 
 binaryOpNeedsParen :: Bool -> Prio -> Prio -> Bool
 binaryOpNeedsParen isLeftChild opprio childprio =
@@ -303,7 +309,7 @@ binaryOpNeedsParen isLeftChild opprio childprio =
             associates childprio opprio)
     )
 
-parenthesizeI :: NExprF NExpr -> NExprF (NixMonad ())
+parenthesizeI :: NExprF (Prio, NixMonad ()) -> NExprF (NixMonad ())
 parenthesizeI expr =
     let prio = exprPrio expr
         paren cmp = parenIf (cmp prio)
