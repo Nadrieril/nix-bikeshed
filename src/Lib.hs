@@ -309,17 +309,18 @@ binaryOpNeedsParen isLeftChild opprio childprio =
 
 parenthesizeI :: NExprF NExpr -> NExprF (NixMonad ())
 parenthesizeI expr =
-    let prio = exprPrio expr in
-    case expr of
+    let prio = exprPrio expr
+        paren cmp = parenExprI (cmp prio)
+    in case expr of
         NBinary op l r -> NBinary op
-            (parenExprI (binaryOpNeedsParen True prio) l)
-            (parenExprI (binaryOpNeedsParen False prio) r)
-        NApp f x -> NApp (parenExprI (prio <) f) (parenExprI (prio <=) x)
-        NUnary op _ -> fmap (parenExprI (prio <)) expr
-        NSelect _ _ _ -> fmap (parenExprI (prio <=)) expr
-        NHasAttr _ _ -> fmap (parenExprI (prio <=)) expr
-        NList _ -> fmap (parenExprI (prio <=)) expr
-        expr -> fmap exprI expr
+            (paren (binaryOpNeedsParen True) l)
+            (paren (binaryOpNeedsParen False) r)
+        NApp f x -> NApp (paren (<) f) (paren (<=) x)
+        NUnary _ _ -> fmap (paren (<)) expr
+        NSelect _ _ _ -> fmap (paren (<=)) expr
+        NHasAttr _ _ -> fmap (paren (<=)) expr
+        NList _ -> fmap (paren (<=)) expr
+        expr -> fmap (paren (\_ _ -> False)) expr
 
 formatI :: NExprF (NixMonad ()) -> NixMonad ()
 formatI = \case
