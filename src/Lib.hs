@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, FlexibleContexts, ScopedTypeVariables, OverloadedStrings, LambdaCase #-}
+{-# LANGUAGE FlexibleInstances, FlexibleContexts, ScopedTypeVariables, RankNTypes, OverloadedStrings, LambdaCase #-}
 module Lib where
 
 import Control.Monad.State.Strict
@@ -213,13 +213,14 @@ quote x =
 
 -- *I functions return the string that fits the constraints
 exprI :: NExpr -> NixMonad ()
-exprI = formatI .
-        parenthesizeI .
-        fmap (fmap exprI) .
-        unroll
+exprI = mhisto psi
+    where
+        psi rec unroll = formatI . parenthesizeI . fmap (\y -> (exprPrio $ unroll y, rec y))
 
-unroll :: NExpr -> NExprF (Prio, NExpr)
-unroll = fmap (\(Fix e) -> (exprPrio e, Fix e)) . unFix
+-- Mendler-style course-of-value iteration (histomorphism)
+mhisto :: (forall y. (y -> c) -> (y -> f y) -> f y -> c) -> Fix f -> c
+mhisto psi = psi (mhisto psi) unFix . unFix
+
 
 -- *L functions return the length the expression would take if put all on one
 -- line
