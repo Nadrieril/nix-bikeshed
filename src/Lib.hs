@@ -256,29 +256,18 @@ unOpStr = T.pack . Nix.operatorName . Nix.getUnaryOperator
 exprPrio :: NExprF a -> Prio
 exprPrio = \case
     -- See https://nixos.org/nix/manual/#table-operators
-    NSelect _ _ _ -> selectPrio
-    NApp _ _ -> appPrio
-    NList _ -> listPrio
-    NUnary op _ -> unaryPrio op
-    NHasAttr _ _ -> hasAttrPrio
-    NBinary op _ _ -> binaryPrio op
+    NSelect _ _ _ -> HNixPrio Nix.selectOp
+    NApp _ _ -> HNixPrio Nix.appOp
+    NList _ -> HNixPrio Nix.appOp
+    NUnary op _ -> HNixPrio $ Nix.getUnaryOperator op
+    NHasAttr _ _ -> HNixPrio Nix.hasAttrOp
+    NBinary op _ _ -> HNixPrio $ Nix.getBinaryOperator op
     NAbs _ _ -> MaxPrio
     NLet _ _ -> MaxPrio
     NIf _ _ _ -> MaxPrio
     NWith _ _ -> MaxPrio
     NAssert _ _ -> MaxPrio
     _ -> NoPrio
-
-listPrio, appPrio, selectPrio, hasAttrPrio :: Prio
-listPrio = HNixPrio Nix.appOp
-appPrio = HNixPrio Nix.appOp
-selectPrio = HNixPrio Nix.selectOp
-hasAttrPrio = HNixPrio Nix.hasAttrOp
-
-unaryPrio :: NUnaryOp -> Prio
-unaryPrio = HNixPrio . Nix.getUnaryOperator
-binaryPrio :: NBinaryOp -> Prio
-binaryPrio = HNixPrio . Nix.getBinaryOperator
 
 
 associates :: Prio -> Prio -> Bool
