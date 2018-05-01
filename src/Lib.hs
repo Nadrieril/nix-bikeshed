@@ -290,14 +290,10 @@ associates l r = case (binOpOf l, binOpOf r) of
     -- //
     ("//", "//") -> True
 
-paren :: NixMonad () -> NixMonad ()
-paren s = writeText "(" >> s >> writeText ")"
-
-parenIf :: Bool -> NixMonad () -> NixMonad ()
-parenIf cond = if cond then paren else id
-
-parenExprI :: (Prio -> Bool) -> NExpr -> NixMonad ()
-parenExprI pred e = parenIf (pred $ exprPrio $ unFix e) (exprI e)
+parenIf :: (Prio -> Bool) -> NExpr -> NixMonad ()
+parenIf pred e = if pred $ exprPrio $ unFix e
+    then writeText "(" >> exprI e >> writeText ")"
+    else exprI e
 
 binaryOpNeedsParen :: Bool -> Prio -> Prio -> Bool
 binaryOpNeedsParen isLeftChild opprio childprio =
@@ -310,7 +306,7 @@ binaryOpNeedsParen isLeftChild opprio childprio =
 parenthesizeI :: NExprF NExpr -> NExprF (NixMonad ())
 parenthesizeI expr =
     let prio = exprPrio expr
-        paren cmp = parenExprI (cmp prio)
+        paren cmp = parenIf (cmp prio)
     in case expr of
         NBinary op l r -> NBinary op
             (paren (binaryOpNeedsParen True) l)
